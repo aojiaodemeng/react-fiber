@@ -1,4 +1,4 @@
-import { createTaskQueue, arrified } from "../Misc";
+import { createTaskQueue, arrified, createStateNode } from "../Misc";
 
 const taskQueue = createTaskQueue();
 // 默认没有任务
@@ -32,10 +32,11 @@ const reconcileChildren = (fiber, children) => {
       tag: "host_component",
       effects: [],
       effectTag: "placement",
-      stateNode: null,
       parent: fiber,
     };
 
+    newFiber.stateNode = createStateNode(newFiber);
+    // 为父级fiber添加子级fiber
     if (index == 0) {
       fiber.child = newFiber;
     } else {
@@ -47,6 +48,7 @@ const reconcileChildren = (fiber, children) => {
 };
 const executeTask = (fiber) => {
   reconcileChildren(fiber, fiber.props.children);
+  console.log(fiber);
 };
 const workLoop = (deadline) => {
   // 1.先判断任务是否存在，如果不存在，则调用getFirstTask获取任务
