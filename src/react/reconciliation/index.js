@@ -58,6 +58,10 @@ const executeTask = (fiber) => {
 
   // 没有子级，就判断是否有同级，有同级直接返回同级，没有同级就退到其父级，判断父级是否有同级
   while (currentExecutelyFiber.parent) {
+    currentExecutelyFiber.parent.effects =
+      currentExecutelyFiber.parent.effects.concat(
+        currentExecutelyFiber.effects.concat([currentExecutelyFiber])
+      );
     if (currentExecutelyFiber.sibling) {
       return currentExecutelyFiber.sibling;
     }
