@@ -2,13 +2,25 @@ import { createTaskQueue } from "../Misc";
 
 const taskQueue = createTaskQueue();
 // 默认没有任务
-const subTask = null;
-const getFirstTask = () => {};
+let subTask = null;
+const getFirstTask = () => {
+  // 从任务队列中获取任务
+  const task = taskQueue.pop();
+  // 返回最外层节点的fiber对象
+  return {
+    props: task.props,
+    stateNode: task.dom,
+    tag: "host_root",
+    effects: [],
+    child: null,
+  };
+};
 const executeTask = (fiber) => {};
 const workLoop = (deadline) => {
   // 1.先判断任务是否存在，如果不存在，则调用getFirstTask获取任务
   if (!subTask) {
     subTask = getFirstTask();
+    console.log(subTask);
   }
 
   // 2.如果任务存在并且浏览器空余时间，则调用executeTask执行任务subTask
@@ -35,7 +47,6 @@ const performTask = (deadline) => {
 export const render = (element, dom) => {
   // 1.向任务队列中添加任务
   // 2.指定在浏览器空闲时执行任务
-
   // 任务就是通过vdom对象构建fiber对象
   taskQueue.push({
     dom,

@@ -6,6 +6,7 @@ const createTaskQueue = () => {
     push: (item) => taskQueue.push(item),
     // 从任务队列中获取任务
     pop: () => taskQueue.shift(),
+    isEmpty: () => taskQueue.length === 0,
   };
 };
 
