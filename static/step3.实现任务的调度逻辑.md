@@ -1,3 +1,36 @@
+# 一、实现思路
+
+上一步骤，在 render 方法中已经实现了向任务队列中添加任务，本节在 render 方法中实现“指定在浏览器空闲时执行任务”的逻辑。
+
+1、在 render 方法中向任务队列中添加任务之后，调用 requestIdleCallback，传入的参数是一个函数（performTask），当浏览器空闲时就会调用这个函数。
+
+2、在 performTask 函数中，先调用 workLoop 函数以执行任务。
+在任务执行过程中，有更高优先级的任务要执行，当前的任务就会被打断，workLoop 方法就会退出，此时就需要重新注册任务，判断 subTask 任务是否有值或任务队列里是否还有任务，如果还有任务就再次告诉浏览器在空闲的时间执行任务。
+
+# 二、简易的流程图
+
+![](./images/step3-1.png)
+
+# 三、核心代码
+
+1、在 createTaskQueue 方法中新增“判断任务队列中是否还有任务”方法
+
+```javascript
+// CreateTaskQueue/index.js
+const createTaskQueue = () => {
+  return {
+    ...
+    // 判断任务队列中是否还有任务
+    isEmpty: () => taskQueue.length === 0
+  };
+};
+
+export default createTaskQueue;
+```
+
+2、
+
+```javascript
 import { createTaskQueue } from "../Misc";
 
 const taskQueue = createTaskQueue();
@@ -6,7 +39,7 @@ const subTask = null;
 const getFirstTask = () => {};
 const executeTask = (fiber) => {};
 const workLoop = (deadline) => {
-  // 1.先判断任务是否存在，如果不存在，则调用getFirstTask获取任务
+  // 1.先判断任务是否存在，如果不存在，则调用getFirstTask获取任务(如果子任务不存在，就去获取子任务)
   if (!subTask) {
     subTask = getFirstTask();
   }
@@ -44,3 +77,4 @@ export const render = (element, dom) => {
   // 当浏览器空闲时就会调用performTask
   requestIdleCallback(performTask);
 };
+```
