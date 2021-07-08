@@ -1,3 +1,58 @@
+# 一、实现思路
+
+要构建子节点的 fiber 对象，就需要获取子节点对应的 virtual dom 对象，这个 vdom 对象可以通过 fiber.props.children 获取。新建 reconcileChildren 方法，传入两个参数（父、子）,要传入父节点的原因是，构建完子节点之后需要告诉子节点谁是父级，同时告诉父级谁是子级。
+
+在 reconcileChildren 方法中，需要判断 children 是数组还是对象（在 render 方法中 children 传的是 element，它是一个对象，而在 createElement 方法中返回的是一个数组）。新建 arrified 方法，对此情况进行处理：如果是数组就直接返回，如果是对象，就包裹在一个数组中再返回。
+
+# 二、更新代码
+
+```javascript
+// 新建src/react/Misc/Arrified/index.js
+const arrified = (arg) => (Array.isArray(arg) ? arg : [arg]);
+export default arrified;
+```
+
+```javascript
+// src/react/Misc/reconciliation/index.js
+const reconcileChildren = (fiber, children) => {
+  // 1.children可能是对象也可能是数组。需要将children转换成数组
+  const arrifiedChildren = arrified(children);
+  // 2.拿到数组中的vdom，转成fiber
+  let index = 0;
+  let numberOfElements = arrifiedChildren.length;
+  let element = null;
+  let newFiber = null;
+  let prevFiber = null;
+  while (index < numberOfElements) {
+    element = arrifiedChildren[index];
+    newFiber = {
+      type: element.type,
+      props: element.props,
+      tag: "host_component",
+      effects: [],
+      effectTag: "placement",
+      stateNode: null,
+      parent: fiber,
+    };
+
+    if (index == 0) {
+      fiber.child = newFiber;
+    } else {
+      prevFiber.sibling = newFiber;
+    }
+    prevFiber = newFiber;
+    index++;
+  }
+};
+const executeTask = (fiber) => {
+  reconcileChildren(fiber, fiber.props.children);
+};
+```
+
+# 三、完整代码
+
+```javascript
+// src/react/Misc/reconciliation/index.js
 import { createTaskQueue, arrified } from "../Misc";
 
 const taskQueue = createTaskQueue();
@@ -86,3 +141,4 @@ export const render = (element, dom) => {
   // 当浏览器空闲时就会调用performTask
   requestIdleCallback(performTask);
 };
+```
