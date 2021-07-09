@@ -1,3 +1,44 @@
+# 一、概述
+
+获取到最外层节点的 fiber 对象，就可以获取到存储 fiber 对象的数组。当 executeTask 方法中的 while 循环执行完成之后，currentExecutelyFiber 这个变量存储的就是最外层节点的 fiber 对象。拿到存储 fiber 对象的数组后，就需要进入 fiber 算法的第二个阶段：实现初始渲染。在 fiber 算法的第二个阶段中，要做真实的 dom 操作，要去构建 dom 节点之间的关系，构建完成之后，要把真实的 dom 节点添加到页面中。
+
+在进入 fiber 算法的第二个阶段之前，需要将 currentExecutelyFiber 变成全局变量。
+
+# 二、更新代码
+
+```javascript
+// reconciliation.js
++  let pendingCommit = null;
+
+// 执行fiber第二阶段的方法
++   const commitAllWork = (fiber) => {
++   console.log(fiber.effects);
++   fiber.effects.forEach((item) => {
++       if (item.effectTag === "placement") {
++       item.parent.stateNode.appendChild(item.stateNode);
++       }
++   });
+    };
+
+    const executeTask = (fiber) => {
+        while(){...}
++       pendingCommit = currentExecutelyFiber;
+    }
+
+    const workLoop = (deadline) => {
+        ...
++       if (pendingCommit) {
++           commitAllWork(pendingCommit);
++       }
+    };
+```
+
+更新之后，jsx 就可以显示在页面上了。其中，commitAllWork 方法接收的参数 fiber.effects 打印出来如下图：
+![](./images/step11-1.png)
+
+# 三、完整代码
+
+```javascript
 import { createTaskQueue, arrified, createStateNode, getTag } from "../Misc";
 
 const taskQueue = createTaskQueue();
@@ -124,3 +165,4 @@ export const render = (element, dom) => {
   // 当浏览器空闲时就会调用performTask
   requestIdleCallback(performTask);
 };
+```
