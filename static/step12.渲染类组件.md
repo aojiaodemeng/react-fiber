@@ -1,12 +1,12 @@
 # 一、步骤概述
 
-首先在 src/index.js 文件中声明一个类组件，并调用 render 方法。
+1、首先在 src/index.js 文件中声明一个类组件，并调用 render 方法。
 
-在构建子节点方法 reconcileChildren 中，创建 fiber 对象时，如果是类组件的话，对象的 tag 属性值就是“class_component”，stateNode 属性中存储的就是该组件的实例对象。因此需要去 getTag 和 createStateNode 方法中进行逻辑补充。
+2、函数组件所对应的 fiber 对象处理：在构建子节点方法 reconcileChildren 中，创建 fiber 对象时，如果是类组件的话，对象的 tag 属性值就是“class_component”，stateNode 属性中存储的就是该组件的实例对象。因此需要去 getTag 和 createStateNode 方法中进行逻辑补充。
 
-在 executeTask 方法中，调用了 reconcileChildren 方法，其中第二个参数是子元素，普通节点的子元素通过 fiber.props.children 获取，而类组件的子元素需要通过 fiber.stateNode.render()获取：fiber.stateNode 存储了组件的实例对象，可以调用 render 方法，获取到组件的子级。
+3、在 executeTask 方法中，调用了 reconcileChildren 方法，其中第二个参数是子元素，普通节点的子元素通过 fiber.props.children 获取，而类组件的子元素需要通过 fiber.stateNode.render()获取：fiber.stateNode 存储了组件的实例对象，可以调用 render 方法，获取到组件的子级。
 
-在提交 commit 阶段，需要判断当前组件的父级是否是类组件，如果是类组件，就无法直接向其追加节点，需要查找父级的父级，直到查找到的父级不是类组件为止，即找到它的普通节点父级为止。
+4、在提交 commit 阶段，需要判断当前组件的父级是否是类组件，如果是类组件，就无法直接向其追加节点，需要查找父级的父级，直到查找到的父级不是类组件为止，即找到它的普通节点父级为止。
 
 # 二、代码更新
 
