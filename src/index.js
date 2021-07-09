@@ -1,4 +1,4 @@
-import React, { render } from "./react";
+import React, { render, Component } from "./react";
 const root = document.getElementById("root");
 const jsx = (
   <div>
@@ -7,4 +7,13 @@ const jsx = (
   </div>
 );
 
-render(jsx, root);
+class Greating extends Component {
+  constructor(props) {
+    super(props);
+  }
+  render() {
+    return <div>hhhhhh</div>;
+  }
+}
+
+render(<Greating />, root);

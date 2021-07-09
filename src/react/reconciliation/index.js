@@ -10,7 +10,16 @@ const commitAllWork = (fiber) => {
   console.log(fiber);
   fiber.effects.forEach((item) => {
     if (item.effectTag === "placement") {
-      item.parent.stateNode.appendChild(item.stateNode);
+      // 类组件本身也是一个节点，但是不能追加dom元素，需要找到类组件的父级，这个父级一定是一个普通的dom元素，向其追加类组件返回的类型
+      //
+      let fiber = item;
+      let parentFiber = item.parent;
+      while (parentFiber.tag === "class_component") {
+        parentFiber = parentFiber.parent;
+      }
+      if (fiber.tag === "host_component") {
+        parentFiber.stateNode.appendChild(item.stateNode);
+      }
     }
   });
 };
@@ -58,7 +67,12 @@ const reconcileChildren = (fiber, children) => {
   }
 };
 const executeTask = (fiber) => {
-  reconcileChildren(fiber, fiber.props.children);
+  if (fiber.tag === "class_component") {
+    // fiber.stateNode组件的实例对象，可以调用render方法，获取到组件的子级
+    reconcileChildren(fiber, fiber.stateNode.render());
+  } else {
+    reconcileChildren(fiber, fiber.props.children);
+  }
 
   // 如果有子级，就返回子级，将这个子级当作父级，构建这个父级下的子级
   if (fiber.child) {
