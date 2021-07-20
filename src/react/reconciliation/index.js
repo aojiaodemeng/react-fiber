@@ -9,7 +9,9 @@ let pendingCommit = null;
 const commitAllWork = (fiber) => {
   // 循环effects数组构建dom节点树
   fiber.effects.forEach((item) => {
-    if (item.effectTag === "update") {
+    if (item.effectTag === "delete") {
+      item.parent.stateNode.removeChild(item.stateNode);
+    } else if (item.effectTag === "update") {
       // 更新
       if (item.type === item.alternate.type) {
         // 节点类型相同
@@ -69,10 +71,15 @@ const reconcileChildren = (fiber, children) => {
     alternate = fiber.alternate.child;
   }
   // while第一次循环时，element = arrifiedChildren[0]就是children数组中第一个子节点，在循环中，需要更新alternate存储的备份节点
-  while (index < numberOfElements) {
+  while (index < numberOfElements || alternate) {
     element = arrifiedChildren[index];
 
-    if (element && alternate) {
+    // 如果element不存在，但是所对应的备份节点存在
+    if (!element && alternate) {
+      //删除操作
+      alternate.effectTag = "delete";
+      fiber.effects.push(alternate);
+    } else if (element && alternate) {
       // 更新
       newFiber = {
         type: element.type,
@@ -106,7 +113,7 @@ const reconcileChildren = (fiber, children) => {
     // 为父级fiber添加子级fiber
     if (index == 0) {
       fiber.child = newFiber;
-    } else {
+    } else if (element) {
       prevFiber.sibling = newFiber;
     }
     // 判断备份节点是否有兄弟节点

@@ -12,7 +12,6 @@ render(jsx, root);
 setTimeout(() => {
   const jsx = (
     <div>
-      <p>奥利给</p>
       <p>hello Fiber</p>
     </div>
   );
