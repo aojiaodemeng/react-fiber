@@ -6,6 +6,16 @@ export default function updateNodeElement(
   // 获取节点对应的属性对象
   const newProps = virtualDOM.props || {};
   const oldProps = oldVirtualDOM.props || {};
+
+  if (virtualDOM.type === "text") {
+    if (newProps.textContent !== oldProps.textContent) {
+      virtualDOM.parent.stateNode.replaceChild(
+        document.createTextNode(newProps.textContent),
+        oldVirtualDOM.stateNode
+      );
+    }
+    return;
+  }
   Object.keys(newProps).forEach((propName) => {
     // 获取属性值
     const newPropsValue = newProps[propName];

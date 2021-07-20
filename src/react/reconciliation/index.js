@@ -1,5 +1,5 @@
 import { createTaskQueue, arrified, createStateNode, getTag } from "../Misc";
-
+import { updateNodeElement } from "../DOM";
 const taskQueue = createTaskQueue();
 // 默认没有任务
 let subTask = null;
@@ -7,9 +7,21 @@ let pendingCommit = null;
 
 // 执行fiber第二阶段的方法
 const commitAllWork = (fiber) => {
-  console.log(fiber);
+  // 循环effects数组构建dom节点树
   fiber.effects.forEach((item) => {
-    if (item.effectTag === "placement") {
+    if (item.effectTag === "update") {
+      // 更新
+      if (item.type === item.alternate.type) {
+        // 节点类型相同
+        updateNodeElement(item.stateNode, item, item.alternate);
+      } else {
+        // 节点类型不同
+        item.parent.stateNode.replaceChild(
+          item.stateNode,
+          item.alternate.stateNode
+        );
+      }
+    } else if (item.effectTag === "placement") {
       // 类组件本身也是一个节点，但是不能追加dom元素，需要找到类组件的父级，这个父级一定是一个普通的dom元素，向其追加类组件返回的类型
       let fiber = item;
       let parentFiber = item.parent;
@@ -24,6 +36,9 @@ const commitAllWork = (fiber) => {
       }
     }
   });
+  // 备份旧的fiber节点对象-当前的fiber对象就是根节点fiber对象，在根节点fiber对象中找到真实的根节点dom对象（fiber.stateNode），
+  // 向其添加一个属性__rootFiberContainer，value值就是根节点fiber对象
+  fiber.stateNode.__rootFiberContainer = fiber;
 };
 const getFirstTask = () => {
   // 从任务队列中获取任务
@@ -35,6 +50,8 @@ const getFirstTask = () => {
     tag: "host_root",
     effects: [],
     child: null,
+    // 创建根节点dom对象时，添加alternate属性，存储备份的fiber对象
+    alternate: task.dom.__rootFiberContainer,
   };
 };
 const reconcileChildren = (fiber, children) => {
@@ -46,24 +63,59 @@ const reconcileChildren = (fiber, children) => {
   let element = null;
   let newFiber = null;
   let prevFiber = null;
+  let alternate = null;
+  // 有alternate说明有备份节点，fiber.alternate.child其实是children数组中第一个子节点的备份节点
+  if (fiber.alternate && fiber.alternate.child) {
+    alternate = fiber.alternate.child;
+  }
+  // while第一次循环时，element = arrifiedChildren[0]就是children数组中第一个子节点，在循环中，需要更新alternate存储的备份节点
   while (index < numberOfElements) {
     element = arrifiedChildren[index];
-    newFiber = {
-      type: element.type,
-      props: element.props,
-      tag: getTag(element),
-      effects: [],
-      effectTag: "placement",
-      parent: fiber,
-    };
 
-    newFiber.stateNode = createStateNode(newFiber);
+    if (element && alternate) {
+      // 更新
+      newFiber = {
+        type: element.type,
+        props: element.props,
+        tag: getTag(element),
+        effects: [],
+        effectTag: "update",
+        parent: fiber,
+        alternate,
+      };
+      if (element.type === alternate.type) {
+        // 类型相同
+        newFiber.stateNode = alternate.stateNode;
+      } else {
+        // 类型不同
+        newFiber.stateNode = createStateNode(newFiber);
+      }
+    }
+    if (element && !alternate) {
+      newFiber = {
+        type: element.type,
+        props: element.props,
+        tag: getTag(element),
+        effects: [],
+        effectTag: "placement",
+        parent: fiber,
+      };
+      newFiber.stateNode = createStateNode(newFiber);
+    }
+
     // 为父级fiber添加子级fiber
     if (index == 0) {
       fiber.child = newFiber;
     } else {
       prevFiber.sibling = newFiber;
     }
+    // 判断备份节点是否有兄弟节点
+    if (alternate && alternate.sibling) {
+      alternate = alternate.sibling;
+    } else {
+      alternate = null;
+    }
+
     prevFiber = newFiber;
     index++;
   }
@@ -98,7 +150,6 @@ const executeTask = (fiber) => {
   }
 
   pendingCommit = currentExecutelyFiber;
-  console.log(fiber);
 };
 const workLoop = (deadline) => {
   // 1.先判断任务是否存在，如果不存在，则调用getFirstTask获取任务
