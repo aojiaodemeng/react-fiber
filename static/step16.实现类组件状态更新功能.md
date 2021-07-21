@@ -1,3 +1,146 @@
+# 一、实现思路
+
+当组件的状态更新时，要把更新操作当作一个任务放到任务队列里，并指定浏览器空闲时执行任务。在执行任务时，要将组件的状态更新任务与其他任务进行区分，所以在添加任务时，可以在任务对象中添加一个字符串标识，在任务对象中，还要添加组件的实例对象和即将要更新的组件状态对象，因为要从组件的实例对象中获取到原本的 state 对象，根据即将要更新的组件状态对象以及原本的 state 对象，才能更新 state 对象。
+
+更新完 state 对象，如何将 state 对象中的数据更新到真实的 dom 对象中？要从根节点开始，为每一个节点重新构建 fiber 对象，从而创建出执行更新操作的 fiber 对象，在进行到 fiber 对象的第二个阶段时，就可以将更新应用到真实的 dom 对象中。
+
+如何获取到已存在的根节点 fiber 对象？状态发生更改时，根节点 fiber 对象已经存在，根据这个已存在的根节点 fiber 对象构建新的根节点 fiber 对象，可以先将组件的 fiber 对象备份到实例对象上，因为组件更新时是可以获取到实例对象的，从而获取到组件的 fiber 对象，从而可以一层一层向上查找，最终获取到最外层的 fiber 对象。
+
+## 1.html
+
+```javascript
+import React, { render, Component } from "./react";
+const root = document.getElementById("root");
+const jsx = (
+  <div>
+    <p>hello React</p>
+    <p>hello Fiber</p>
+  </div>
+);
+
+class Greating extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      name: "张三",
+    };
+  }
+
+  render() {
+    return (
+      <div>
+        {this.props.title} hhh hhhh{this.state.name}
+        <button onClick={() => this.setState({ name: "李四" })}>button</button>
+      </div>
+    );
+  }
+}
+
+render(<Greating title="奥利给" />, root);
+```
+
+## 2.定义 setState 方法
+
+```javascript
+import { scheduleUpdate } from "../reconciliation";
+export class Component {
+  constructor(props) {
+    this.props = props;
+  }
+
++ setState(partialState) {
++   scheduleUpdate(this, partialState);
++ }
+
+}
+```
+
+## 3.定义 getRoot 方法——从组件实例对象中获取 fiber 对象
+
+```javascript
+const getRoot = (instance) => {
+  let fiber = instance.__fiber;
+  while (fiber.parent) {
+    fiber = fiber.parent;
+  }
+  return fiber;
+};
+
+export default getRoot;
+```
+
+## 4.定义 scheduleUpdate 方法——更新操作当作一个任务放到任务队列里，并指定浏览器空闲时执行任务
+
+```javascript
+// conciliation/index.js
+export const scheduleUpdate = (instance, partialState) => {
+  taskQueue.push({
+    from: "class_component",
+    instance,
+    partialState,
+  });
+  requestIdleCallback(performTask);
+};
+```
+
+## 5.getFirstTask
+
+```javascript
+const getFirstTask = () => {
+  const task = taskQueue.pop();
++ if (task.from === "class_component") {
++   // 组件状态更新任务
++   // 获取到组件的实例对象，再获取到最外层节点的fiber对象
++   const root = getRoot(task.instance);
++   task.instance.__fiber.partialState = task.partialState;
++   return {
++     props: root.props,
++     stateNode: root.stateNode,
++     tag: "host_root",
++     effects: [],
++     child: null,
++     alternate: root,
++   };
++ }
+}
+
+```
+
+## 6.executeTask 方法
+
+```javascript
+const executeTask = () => {
+  if (fiber.tag === "class_component") {
++   if (fiber.stateNode.__fiber && fiber.stateNode.__fiber.partialState) {
++     fiber.stateNode.state = {
++       ...fiber.stateNode.state,
++       ...fiber.stateNode.__fiber.partialState,
++     };
++   }
+    // fiber.stateNode组件的实例对象，可以调用render方法，获取到组件的子级
+    reconcileChildren(fiber, fiber.stateNode.render());
+  }
+}
+
+```
+
+## 7.commitAllWork
+
+```javascript
+const commitAllWork = (fiber) => {
+  fiber.effects.forEach((item) => {
+    // 将组件的fiber对象添加到组件的实例对象上
++   if (item.tag === "class_component") {
++     item.stateNode.__fiber = item;
++   }
+    ...
+  });
+};
+```
+
+# 完整的 conciliation/index.js
+
+```javascript
 import {
   createTaskQueue,
   arrified,
@@ -239,3 +382,4 @@ export const scheduleUpdate = (instance, partialState) => {
   });
   requestIdleCallback(performTask);
 };
+```
